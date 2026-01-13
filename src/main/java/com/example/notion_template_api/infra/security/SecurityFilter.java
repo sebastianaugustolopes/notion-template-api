@@ -38,7 +38,8 @@ public class SecurityFilter extends OncePerRequestFilter {
         String path = request.getServletPath();
 
         // Allow public routes without authentication
-        if (path.equals("/auth/login") || path.equals("/auth/register") || path.equals("/auth/signup")) {
+        if (path.equals("/auth/login") || path.equals("/auth/register") || path.equals("/auth/signup") ||
+            path.equals("/api/auth/login") || path.equals("/api/auth/register") || path.equals("/api/auth/signup")) {
             filterChain.doFilter(request, response);
             return;
         }
