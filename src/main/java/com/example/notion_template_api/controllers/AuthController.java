@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.Map;
 import java.util.Optional;
 
 @RestController
@@ -26,30 +27,40 @@ public class AuthController {
     private final TokenService tokenService;
 
     @PostMapping("/login")
-    public ResponseEntity<ResponseDTO> login(@Valid @RequestBody LoginRequestDTO body) {
-        User user = this.repository.findByEmail(body.email())
-                .orElseThrow(() -> new RuntimeException("User not found"));
+    public ResponseEntity<?> login(@Valid @RequestBody LoginRequestDTO body) {
+        Optional<User> optionalUser = this.repository.findByEmail(body.email());
+
+        if (optionalUser.isEmpty()) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", "Invalid email or password"));
+        }
+
+        User user = optionalUser.get();
         if (passwordEncoder.matches(body.password(), user.getPassword())) {
             String token = this.tokenService.generateToken(user);
             return ResponseEntity.ok(new ResponseDTO(user.getName(), token));
         }
-        return ResponseEntity.badRequest().build();
+
+        return ResponseEntity.badRequest()
+                .body(Map.of("error", "Invalid email or password"));
     }
 
-    @PostMapping({"/register", "/signup"})
-    public ResponseEntity<ResponseDTO> register(@Valid @RequestBody RegisterRequestDTO body) {
+    @PostMapping({ "/register", "/signup" })
+    public ResponseEntity<?> register(@Valid @RequestBody RegisterRequestDTO body) {
         Optional<User> user = this.repository.findByEmail(body.email());
 
-        if (user.isEmpty()) {
-            User newUser = new User();
-            newUser.setPassword(passwordEncoder.encode(body.password()));
-            newUser.setEmail(body.email());
-            newUser.setName(body.name());
-            this.repository.save(newUser);
-
-            String token = this.tokenService.generateToken(newUser);
-            return ResponseEntity.ok(new ResponseDTO(newUser.getName(), token));
+        if (user.isPresent()) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", "Email already registered"));
         }
-        return ResponseEntity.badRequest().build();
+
+        User newUser = new User();
+        newUser.setPassword(passwordEncoder.encode(body.password()));
+        newUser.setEmail(body.email());
+        newUser.setName(body.name());
+        this.repository.save(newUser);
+
+        String token = this.tokenService.generateToken(newUser);
+        return ResponseEntity.ok(new ResponseDTO(newUser.getName(), token));
     }
 }

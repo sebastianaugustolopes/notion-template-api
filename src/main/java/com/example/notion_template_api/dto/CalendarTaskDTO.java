@@ -1,6 +1,7 @@
 package com.example.notion_template_api.dto;
 
 import com.example.notion_template_api.domain.task.Task;
+import com.example.notion_template_api.domain.personal.PersonalTask;
 import com.example.notion_template_api.domain.task.TaskPriority;
 import com.example.notion_template_api.domain.task.TaskStatus;
 
@@ -28,6 +29,20 @@ public record CalendarTaskDTO(
             task.getProject().getId(),
             task.getProject().getName(),
             task.getProject().getType().name()
+        );
+    }
+
+    public static CalendarTaskDTO fromPersonalTask(PersonalTask task) {
+        return new CalendarTaskDTO(
+                task.getId(),
+                task.getTitle(),
+                task.getDescription(),
+                task.getEndDate(),
+                TaskPriority.MEDIUM,
+                task.getStatus(),
+                "personal",
+                "Personal To-Do",
+                "PERSONAL"
         );
     }
 }

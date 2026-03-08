@@ -26,11 +26,10 @@ public class SecurityConfig {
 
     @Autowired
     private SecurityFilter securityFilter;
-    
+
     @Autowired
     private RateLimitingFilter rateLimitingFilter;
 
-    
     @Value("${api.security.cors.allowed-origins:https://notion-template-indol.vercel.app}")
     private String allowedOrigins;
 
@@ -45,10 +44,9 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/auth/login", "/api/auth/login").permitAll()
                         .requestMatchers(HttpMethod.POST, "/auth/register", "/api/auth/register").permitAll()
                         .requestMatchers(HttpMethod.POST, "/auth/signup", "/api/auth/signup").permitAll()
-                        .anyRequest().authenticated()
-                )
-                .addFilterBefore(rateLimitingFilter, UsernamePasswordAuthenticationFilter.class)
-                .addFilterBefore(securityFilter, UsernamePasswordAuthenticationFilter.class);
+                        .anyRequest().authenticated())
+                .addFilterBefore(securityFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(rateLimitingFilter, SecurityFilter.class);
         return http.build();
     }
 
@@ -61,7 +59,7 @@ public class SecurityConfig {
         configuration.setExposedHeaders(Arrays.asList("Authorization", "Content-Type"));
         configuration.setAllowCredentials(true);
         configuration.setMaxAge(3600L);
-        
+
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;
@@ -73,7 +71,8 @@ public class SecurityConfig {
     }
 
     @Bean
-    public AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration) throws Exception {
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration)
+            throws Exception {
         return authenticationConfiguration.getAuthenticationManager();
     }
 }

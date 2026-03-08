@@ -25,8 +25,8 @@ public class SecurityFilter extends OncePerRequestFilter {
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
-                                    HttpServletResponse response,
-                                    FilterChain filterChain)
+            HttpServletResponse response,
+            FilterChain filterChain)
             throws ServletException, IOException {
 
         // Allow preflight CORS (OPTIONS) requests to pass through directly
@@ -39,36 +39,44 @@ public class SecurityFilter extends OncePerRequestFilter {
 
         // Allow public routes without authentication
         if (path.equals("/auth/login") || path.equals("/auth/register") || path.equals("/auth/signup") ||
-            path.equals("/api/auth/login") || path.equals("/api/auth/register") || path.equals("/api/auth/signup")) {
+                path.equals("/api/auth/login") || path.equals("/api/auth/register")
+                || path.equals("/api/auth/signup")) {
             filterChain.doFilter(request, response);
             return;
         }
 
         var token = this.recoverToken(request);
-        var login = tokenService.validateToken(token);
 
-        if (login != null) {
-            User user = userRepository.findByEmail(login)
-                    .orElseThrow(() -> new RuntimeException("User Not Found"));
+        try {
+            var login = tokenService.validateToken(token);
 
-            var authorities = Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER"));
-            var authentication = new UsernamePasswordAuthenticationToken(user, null, authorities);
-            SecurityContextHolder.getContext().setAuthentication(authentication);
-        } else {
-            // Invalid, expired, or missing token on protected route
-            // Return 401 Unauthorized instead of continuing without authentication
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            response.setContentType("application/json");
-            response.getWriter().write("{\"error\": \"Unauthorized: Invalid or missing token\"}");
-            return;
+            if (login != null) {
+                User user = userRepository.findByEmail(login)
+                        .orElseThrow(() -> new RuntimeException("User Not Found"));
+
+                var authorities = Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER"));
+                var authentication = new UsernamePasswordAuthenticationToken(user, null, authorities);
+                SecurityContextHolder.getContext().setAuthentication(authentication);
+            }
+        } catch (Exception e) {
+            // Token validation failed — do not set authentication.
+            // Spring Security's AuthorizationFilter will handle 401/403 with proper CORS
+            // headers.
         }
 
         filterChain.doFilter(request, response);
     }
 
+    private void sendUnauthorizedResponse(HttpServletResponse response) throws IOException {
+        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        response.setContentType("application/json");
+        response.getWriter().write("{\"error\": \"Unauthorized: Invalid or missing token\"}");
+    }
+
     private String recoverToken(HttpServletRequest request) {
         var authHeader = request.getHeader("Authorization");
-        if (authHeader == null) return null;
+        if (authHeader == null)
+            return null;
         return authHeader.replace("Bearer ", "");
     }
 }
