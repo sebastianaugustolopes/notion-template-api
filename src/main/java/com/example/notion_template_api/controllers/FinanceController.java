@@ -209,5 +209,92 @@ public class FinanceController {
                 })
                 .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).build());
     }
+
+    public record UpdateCardRequest(
+            String name,
+            FinanceCardType type,
+            String bankId,
+            Double monthlyFixedBalance
+    ) {}
+
+    @PutMapping("/cards/{id}")
+    public ResponseEntity<FinanceCardDTO> updateCard(
+            @AuthenticationPrincipal User user,
+            @PathVariable String id,
+            @RequestBody UpdateCardRequest request
+    ) {
+        return cardRepository.findByIdAndUser(id, user)
+                .map(card -> {
+                    card.setName(request.name());
+                    card.setType(request.type());
+                    card.setBankId(request.bankId());
+                    card.setMonthlyFixedBalance(request.monthlyFixedBalance);
+                    FinanceCard saved = cardRepository.save(card);
+                    return ResponseEntity.ok(FinanceCardDTO.fromEntity(saved));
+                })
+                .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).build());
+    }
+
+    @DeleteMapping("/cards/{id}")
+    public ResponseEntity<Void> deleteCard(
+            @AuthenticationPrincipal User user,
+            @PathVariable String id
+    ) {
+        return cardRepository.findByIdAndUser(id, user)
+                .map(card -> {
+                    cardRepository.delete(card);
+                    return ResponseEntity.noContent().<Void>build();
+                })
+                .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).build());
+    }
+
+    public record UpdateCategoryRequest(
+            String name,
+            Double monthlyLimit,
+            String cardId
+    ) {}
+
+    @PutMapping("/categories/{id}")
+    public ResponseEntity<FinanceCategoryDTO> updateCategory(
+            @AuthenticationPrincipal User user,
+            @PathVariable String id,
+            @RequestBody UpdateCategoryRequest request
+    ) {
+        List<FinanceCard> userCards = cardRepository.findByUserOrderByNameAsc(user);
+        return categoryRepository.findByIdAndCardIn(id, userCards)
+                .flatMap(category -> {
+                    // Se o cardId mudou, verificar se o novo cartão pertence ao usuário
+                    if (!category.getCard().getId().equals(request.cardId())) {
+                        return cardRepository.findByIdAndUser(request.cardId(), user)
+                                .map(newCard -> {
+                                    category.setCard(newCard);
+                                    category.setName(request.name());
+                                    category.setMonthlyLimit(request.monthlyLimit());
+                                    FinanceCategory saved = categoryRepository.save(category);
+                                    return ResponseEntity.ok(FinanceCategoryDTO.fromEntity(saved));
+                                });
+                    } else {
+                        category.setName(request.name());
+                        category.setMonthlyLimit(request.monthlyLimit());
+                        FinanceCategory saved = categoryRepository.save(category);
+                        return java.util.Optional.of(ResponseEntity.ok(FinanceCategoryDTO.fromEntity(saved)));
+                    }
+                })
+                .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).build());
+    }
+
+    @DeleteMapping("/categories/{id}")
+    public ResponseEntity<Void> deleteCategory(
+            @AuthenticationPrincipal User user,
+            @PathVariable String id
+    ) {
+        List<FinanceCard> userCards = cardRepository.findByUserOrderByNameAsc(user);
+        return categoryRepository.findByIdAndCardIn(id, userCards)
+                .map(category -> {
+                    categoryRepository.delete(category);
+                    return ResponseEntity.noContent().<Void>build();
+                })
+                .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).build());
+    }
 }
 
