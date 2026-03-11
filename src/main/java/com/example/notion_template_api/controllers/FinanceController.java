@@ -296,5 +296,37 @@ public class FinanceController {
                 })
                 .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).build());
     }
+
+    @DeleteMapping("/extra-transactions/{id}")
+    public ResponseEntity<Void> deleteExtraTransaction(
+            @AuthenticationPrincipal User user,
+            @PathVariable String id
+    ) {
+        return extraTransactionRepository.findById(id)
+                .map(tx -> {
+                    if (tx.getCard().getUser().getId().equals(user.getId())) {
+                        extraTransactionRepository.delete(tx);
+                        return ResponseEntity.noContent().<Void>build();
+                    }
+                    return ResponseEntity.status(HttpStatus.FORBIDDEN).<Void>build();
+                })
+                .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).build());
+    }
+
+    @DeleteMapping("/transactions/{id}")
+    public ResponseEntity<Void> deleteTransaction(
+            @AuthenticationPrincipal User user,
+            @PathVariable String id
+    ) {
+        return transactionRepository.findById(id)
+                .map(tx -> {
+                    if (tx.getCard().getUser().getId().equals(user.getId())) {
+                        transactionRepository.delete(tx);
+                        return ResponseEntity.noContent().<Void>build();
+                    }
+                    return ResponseEntity.status(HttpStatus.FORBIDDEN).<Void>build();
+                })
+                .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).build());
+    }
 }
 

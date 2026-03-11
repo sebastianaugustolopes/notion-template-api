@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.util.List;
+
 @Entity
 @Table(name = "finance_categories")
 @Getter
@@ -23,5 +25,8 @@ public class FinanceCategory {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "card_id")
     private FinanceCard card;
+
+    @OneToMany(mappedBy = "category", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<FinanceTransaction> transactions;
 }
 
